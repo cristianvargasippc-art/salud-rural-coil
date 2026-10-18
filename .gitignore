@@ -1,0 +1,4 @@
+# La base se crea sola al iniciar la app (con datos de demostracion)
+data/*.db
+__pycache__/
+.venv/
