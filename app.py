@@ -3,8 +3,10 @@
 Proyecto COIL Ucompensar (Colombia) - Unicda (Republica Dominicana) - Grupo 6.
 Ejecutar localmente:  streamlit run app.py
 """
+import base64
 import html
 import sqlite3
+from pathlib import Path
 
 import altair as alt
 import pandas as pd
@@ -32,6 +34,12 @@ ETIQUETAS = {
     "presion_diastolica": "PA diast. (mmHg)",
     "spo2_porcentaje": "SpO2 (%)",
 }
+ASSETS = Path(__file__).parent / "assets"
+INTEGRANTES = [
+    "Jhoan Stheban Pimentel Díaz", "Dagoberto Rodríguez Sanabria", "Ginna Carolina Vega Villamizar",
+    "Elizabeth Torres Ríos", "María Estefany Zúñiga González", "Cristian Dinelson Vargas Díaz",
+    "Ronal Guzmán Martínez",
+]
 
 st.markdown(
     """
@@ -67,6 +75,30 @@ st.markdown(
             display: flex; align-items: center; justify-content: center; font-weight: 700;}
 .canal {border-radius: 10px; padding: .9rem 1rem; font-weight: 500;}
 .sidebar-foot {font-size: .8rem; opacity: .8; margin-top: 1rem;}
+.lp-logos {display: flex; align-items: center; justify-content: center; gap: 2.2rem; flex-wrap: wrap;
+           background: #fff; border: 1px solid #e5e9f0; border-radius: 14px; padding: 1rem 1.5rem;
+           margin-bottom: 1.2rem;}
+.lp-logos img {height: 52px; width: auto;}
+.lp-logos .sep {width: 1px; height: 44px; background: #e5e9f0;}
+.lp-hero {background: radial-gradient(circle at 85% 20%, rgba(45,212,191,.35), transparent 45%),
+          linear-gradient(125deg, #12304f 0%, #0f5f6b 55%, #0d9488 100%);
+          color: #fff; border-radius: 18px; padding: 2.6rem 2.4rem; margin-bottom: 1rem;}
+.lp-hero .tag {display: inline-block; background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.25);
+               padding: .25rem .8rem; border-radius: 999px; font-size: .78rem; letter-spacing: .06em;
+               text-transform: uppercase;}
+.lp-hero h1 {color: #fff; font-size: 2.5rem; line-height: 1.1; margin: .8rem 0 .7rem 0; padding: 0;}
+.lp-hero p {color: #d5f3ef; font-size: 1.05rem; max-width: 46rem; margin: 0;}
+.lp-sec {font-size: .78rem; color: #0d9488; text-transform: uppercase; letter-spacing: .08em;
+         font-weight: 700; margin: 1.8rem 0 .2rem 0;}
+.lp-res {border-radius: 14px; padding: 1.4rem 1.5rem; color: #fff; height: 100%;}
+.lp-res .k {font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; opacity: .85;}
+.lp-res .p {font-size: 2.2rem; font-weight: 800; line-height: 1.1; margin: .2rem 0 .8rem 0;}
+.lp-res .c {background: rgba(255,255,255,.16); border-radius: 10px; padding: .7rem .9rem; font-size: .95rem;}
+.lp-team {display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: .7rem;}
+.lp-team div {display: flex; align-items: center; gap: .7rem; background: #fff; border: 1px solid #e5e9f0;
+              border-radius: 12px; padding: .7rem .9rem; font-size: .92rem; color: #1b2a41;}
+.lp-team b {background: #ccfbf1; color: #0f766e; border-radius: 50%; min-width: 2.2rem; height: 2.2rem;
+            display: flex; align-items: center; justify-content: center; font-size: .8rem;}
 </style>
 """,
     unsafe_allow_html=True,
@@ -124,7 +156,84 @@ def grafico_barras(serie, titulo, colores=None):
     st.altair_chart(chart, width="stretch")
 
 
+@st.cache_data
+def imagen_b64(nombre):
+    return base64.b64encode((ASSETS / nombre).read_bytes()).decode()
+
+
 # ------------------------------------------------------------------ paginas
+def pagina_bienvenida():
+    st.markdown(
+        f'<div class="lp-logos"><img src="data:image/png;base64,{imagen_b64("logo-ucompensar.png")}" alt="Ucompensar">'
+        f'<span class="sep"></span><img src="data:image/png;base64,{imagen_b64("logo-unicda.png")}" alt="UNICDA"></div>'
+        '<div class="lp-hero"><span class="tag">Proyecto COIL · Grupo 6</span>'
+        "<h1>Salud rural conectada</h1>"
+        "<p>Prototipo que comunica el puesto de salud de la vereda o el batey con el hospital rural: "
+        "registro del paciente, triaje automático y envío del reporte por el canal adecuado, "
+        "incluso cuando no hay conexión.</p></div>",
+        unsafe_allow_html=True,
+    )
+    b1, b2, _ = st.columns([1, 1, 2])
+    if b1.button("Ingresar al sistema", type="primary", icon=":material/login:", width="stretch"):
+        st.switch_page(PAG_PANEL)
+    if b2.button("Registrar una consulta", icon=":material/medical_services:", width="stretch"):
+        st.switch_page(PAG_PUESTO)
+
+    df = reporte_df()
+    st.markdown('<div class="lp-sec">Estado actual del sistema</div>', unsafe_allow_html=True)
+    kpis([
+        (con.execute("SELECT COUNT(*) FROM Paciente").fetchone()[0], "Pacientes registrados", "#1b365d"),
+        (len(df), "Consultas enviadas", "#0d9488"),
+        (int((df["estado"] == "Atendido").sum()) if len(df) else 0, "Atendidas por el hospital", COLORES["Baja"]),
+        (con.execute("SELECT COUNT(*) FROM CentroMedico").fetchone()[0], "Centros conectados", COLORES["Media"]),
+    ])
+
+    st.markdown('<div class="lp-sec">Módulos</div>', unsafe_allow_html=True)
+    modulos = [
+        (PAG_REGISTRO, "Registro de pacientes", "Identificación, procedencia y grupo sanguíneo."),
+        (PAG_PUESTO, "Puesto de salud", "Signos vitales validados, triaje y envío del reporte."),
+        (PAG_HOSPITAL, "Hospital rural", "Bandeja por prioridad, diagnóstico CIE-10 y respuesta."),
+        (PAG_REPORTES, "Reportes", "Filtros, gráficos y descarga en CSV."),
+    ]
+    for col, (pagina, titulo, desc) in zip(st.columns(4), modulos):
+        with col.container(border=True, height="stretch"):
+            st.markdown(f"**{titulo}**")
+            st.caption(desc)
+            st.page_link(pagina, label="Abrir módulo", icon=":material/arrow_forward:")
+
+    st.markdown('<div class="lp-sec">Pruebe el triaje automático</div>', unsafe_allow_html=True)
+    st.caption("Mueva los signos vitales: el sistema aplica las mismas reglas que usa el puesto de salud.")
+    with st.container(border=True):
+        izq, der = st.columns([3, 2], gap="large")
+        with izq:
+            a, b = st.columns(2)
+            spo2 = a.slider("Saturación SpO2 (%)", 70, 100, 97)
+            fc = b.slider("Frecuencia cardíaca (lat/min)", 30, 180, 78)
+            pas = a.slider("Presión sistólica (mmHg)", 80, 220, 120)
+            pad = b.slider("Presión diastólica (mmHg)", 40, 140, 78)
+            fr = a.slider("Frecuencia respiratoria (resp/min)", 8, 45, 16)
+            conexion = b.toggle("Hay conexión en el puesto", value=True)
+        prioridad = db.clasificar_prioridad(fc, fr, pas, pad, spo2)
+        canal = db.decidir_canal(prioridad, conexion)
+        explicacion = {
+            "Sincronico (teleconsulta)": "Se abre una teleconsulta en tiempo real con el médico del hospital.",
+            "Asincronico (reporte)": "El reporte llega a la bandeja del hospital para su revisión.",
+            "Offline (envio diferido)": "El reporte se guarda en el dispositivo y se envía al recuperar la señal.",
+        }[canal]
+        der.markdown(
+            f'<div class="lp-res" style="background:{COLORES[prioridad]}"><div class="k">Prioridad</div>'
+            f'<div class="p">{prioridad}</div><div class="k">Canal de comunicación</div>'
+            f'<div class="c"><b>{canal}</b><br>{explicacion}</div></div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown('<div class="lp-sec">Equipo de trabajo</div>', unsafe_allow_html=True)
+    tarjetas = "".join(
+        f"<div><b>{n.split()[0][0]}{n.split()[-2][0]}</b>{e(n)}</div>" for n in INTEGRANTES)
+    st.markdown(f'<div class="lp-team">{tarjetas}</div>', unsafe_allow_html=True)
+    st.caption("Ucompensar (Colombia) · Universidad Dominico Americano UNICDA (República Dominicana)")
+
+
 def pagina_inicio():
     encabezado("Sistema de Comunicación de Reportes de Salud",
                "Puesto de salud rural (vereda en Colombia, batey o UNAP en República Dominicana) "
@@ -379,14 +488,16 @@ def pagina_reportes():
 
 
 # ------------------------------------------------------------------ navegacion
+PAG_BIENVENIDA = st.Page(pagina_bienvenida, title="Bienvenida", icon=":material/home:", default=True)
+PAG_PANEL = st.Page(pagina_inicio, title="Panel general", icon=":material/dashboard:", url_path="panel")
+PAG_REGISTRO = st.Page(pagina_registro, title="Registro de pacientes", icon=":material/person_add:", url_path="registro")
+PAG_PUESTO = st.Page(pagina_puesto, title="Puesto de salud", icon=":material/medical_services:", url_path="puesto")
+PAG_HOSPITAL = st.Page(pagina_hospital, title="Hospital rural", icon=":material/local_hospital:", url_path="hospital")
+PAG_REPORTES = st.Page(pagina_reportes, title="Reportes", icon=":material/analytics:", url_path="reportes")
 paginas = {
-    "General": [st.Page(pagina_inicio, title="Inicio", icon=":material/dashboard:", default=True)],
-    "Atención": [
-        st.Page(pagina_registro, title="Registro de pacientes", icon=":material/person_add:", url_path="registro"),
-        st.Page(pagina_puesto, title="Puesto de salud", icon=":material/medical_services:", url_path="puesto"),
-        st.Page(pagina_hospital, title="Hospital rural", icon=":material/local_hospital:", url_path="hospital"),
-    ],
-    "Análisis": [st.Page(pagina_reportes, title="Reportes", icon=":material/analytics:", url_path="reportes")],
+    "General": [PAG_BIENVENIDA, PAG_PANEL],
+    "Atención": [PAG_REGISTRO, PAG_PUESTO, PAG_HOSPITAL],
+    "Análisis": [PAG_REPORTES],
 }
 navegacion = st.navigation(paginas)
 st.sidebar.markdown(
