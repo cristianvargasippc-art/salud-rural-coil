@@ -36,9 +36,13 @@ ETIQUETAS = {
 }
 ASSETS = Path(__file__).parent / "assets"
 INTEGRANTES = [
-    "Jhoan Stheban Pimentel Díaz", "Dagoberto Rodríguez Sanabria", "Ginna Carolina Vega Villamizar",
-    "Elizabeth Torres Ríos", "María Estefany Zúñiga González", "Cristian Dinelson Vargas Díaz",
-    "Ronal Guzmán Martínez",
+    ("Jhoan Stheban Pimentel Díaz", "Ingeniería en Ciencia de Datos"),
+    ("Dagoberto Rodríguez Sanabria", "Ingeniería en Ciencia de Datos"),
+    ("Ginna Carolina Vega Villamizar", "Ingeniería en Ciencia de Datos"),
+    ("Elizabeth Torres Ríos", "Ingeniería Biomédica"),
+    ("María Estefany Zúñiga González", "Ingeniería Biomédica"),
+    ("Cristian Dinelson Vargas Díaz", "Ingeniería en Ciencia de Datos"),
+    ("Ronal Guzmán Martínez", "Ingeniería en Desarrollo de Software"),
 ]
 
 st.markdown(
@@ -99,6 +103,7 @@ st.markdown(
               border-radius: 12px; padding: .7rem .9rem; font-size: .92rem; color: #1b2a41;}
 .lp-team b {background: #ccfbf1; color: #0f766e; border-radius: 50%; min-width: 2.2rem; height: 2.2rem;
             display: flex; align-items: center; justify-content: center; font-size: .8rem;}
+.lp-team small {display: block; color: #0f766e; font-size: .78rem; margin-top: .15rem;}
 </style>
 """,
     unsafe_allow_html=True,
@@ -229,7 +234,8 @@ def pagina_bienvenida():
 
     st.markdown('<div class="lp-sec">Equipo de trabajo</div>', unsafe_allow_html=True)
     tarjetas = "".join(
-        f"<div><b>{n.split()[0][0]}{n.split()[-2][0]}</b>{e(n)}</div>" for n in INTEGRANTES)
+        f"<div><b>{n.split()[0][0]}{n.split()[-2][0]}</b><span>{e(n)}<small>{e(c)}</small></span></div>"
+        for n, c in INTEGRANTES)
     st.markdown(f'<div class="lp-team">{tarjetas}</div>', unsafe_allow_html=True)
     st.caption("Ucompensar (Colombia) · Universidad Dominico Americano UNICDA (República Dominicana)")
 
